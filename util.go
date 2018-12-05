@@ -84,7 +84,7 @@ func (api *API) push(file *os.File) (*http.Response, error) {
 	mpw := multipart.NewWriter(body)
 
 	// Create the MPW
-	part, err := mpw.CreateFormFile("push", file.Name())
+	part, err := mpw.CreateFormFile("push", filepath.Base(file.Name()))
 	if err != nil {
 		return &http.Response{}, err
 	}
@@ -101,7 +101,6 @@ func (api *API) push(file *os.File) (*http.Response, error) {
 		return &http.Response{}, err
 	}
 
-	cl.Request.SetBasicAuth(*username, *password)
 	cl.Request.Header.Set("Content-Type", mpw.FormDataContentType())
 	cl.Request.ContentLength = int64(body.Len())
 
@@ -111,6 +110,7 @@ func (api *API) push(file *os.File) (*http.Response, error) {
 		return ioutil.NopCloser(r), nil
 	}
 
+	cl.Request.SetBasicAuth(*username, *password)
 	return cl.Client.Do(cl.Request)
 }
 
