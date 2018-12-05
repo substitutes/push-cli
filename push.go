@@ -47,10 +47,20 @@ func main() {
 	go func() {
 		for {
 			select {
-			case event := <-watcher.Events:
-				log.Debugf("A change occurred - syncing directory %s to %s (event: %s)", *directory, *server, event.String())
-				api.pushFiles()
-			case err := <-watcher.Errors:
+			case event, ok := <-watcher.Events:
+				if !ok {
+					log.Debug("Watcher event is not OK!")
+					return
+				}
+				if event.Op&fsnotify.Write == fsnotify.Write {
+					log.Debugf("A change occurred - syncing directory %s to %s (event: %s)", *directory, *server, event.String())
+					api.pushFiles()
+				}
+			case err, ok := <-watcher.Errors:
+				if !ok {
+					log.Debug("Watcher error event is not OK!")
+					return
+				}
 				log.Warn("An error occurred while attempting to watch the given directory: ", err)
 			}
 		}
