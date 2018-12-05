@@ -151,7 +151,12 @@ func (api *API) pushFiles() {
 			log.Warnf("Failed to upload file: %v (%+v)", v.Message, v.Error)
 			return errors.New(v.Error)
 		}
-		var v []string
+		var v []struct {
+			UploadedAt int64  `json:"uploaded_at"`
+			Name       string `json:"name"`
+			Size       int64  `json:"size"`
+		}
+
 		if err := json.Unmarshal(responseBytes, &v); err != nil {
 			log.Warn("Failed to unmarshal response: ", err)
 			return err
