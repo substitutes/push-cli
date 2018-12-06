@@ -96,6 +96,7 @@ func (api *API) push(file *os.File) (*http.Response, error) {
 	}
 
 	cl, err := client.New((*server).String()+"/api/push", "POST", body)
+
 	if err != nil {
 		log.Warn("Failed to create client")
 		return &http.Response{}, err
@@ -103,6 +104,7 @@ func (api *API) push(file *os.File) (*http.Response, error) {
 
 	cl.Request.Header.Set("Content-Type", mpw.FormDataContentType())
 	cl.Request.ContentLength = int64(body.Len())
+	cl.Client.Transport = &http.Transport{Proxy: http.ProxyURL(*proxyURL)}
 
 	buf := body.Bytes()
 	cl.Request.GetBody = func() (io.ReadCloser, error) {

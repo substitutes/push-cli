@@ -13,6 +13,8 @@ var (
 	username  = kingpin.Flag("username", "Specify the username for the backend service").Short('u').Required().String()
 	password  = kingpin.Flag("password", "Specify the password for the backend service").Short('p').Required().String()
 	directory = kingpin.Arg("directory", "Specify the directory to listen").Required().ExistingDir()
+	proxy     = kingpin.Flag("proxy", "Enable HTTP proxy").Bool()
+	proxyURL  = kingpin.Flag("proxy-url", "Proxy URL").URL()
 )
 
 func main() {
