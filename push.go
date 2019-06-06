@@ -1,9 +1,11 @@
 package main
 
 import (
-	"github.com/fsnotify/fsnotify"
 	log "github.com/sirupsen/logrus"
+	"github.com/substitutes/push-cli/parser"
+	"github.com/substitutes/substitutes/structs"
 	"gopkg.in/alecthomas/kingpin.v2"
+	"io/ioutil"
 	"path/filepath"
 )
 
@@ -24,7 +26,7 @@ func main() {
 	if *verbose {
 		log.SetLevel(log.DebugLevel)
 	}
-	api := API{}
+	// api := API{}
 
 	// api.pingAPI()
 
@@ -39,38 +41,24 @@ func main() {
 	}
 	log.Debugf("Using absolute directory %s! ", *directory)
 
-	watcher, err := fsnotify.NewWatcher()
+	// Parse data from directory
+	classesFile, err := ioutil.ReadFile(*directory + "/Druck_Kla.htm")
 	if err != nil {
-		log.Fatal("Failed to start fsnotify watcher: ", err)
+		log.Fatal("Failed to read classes file (Druck_Kla.htm): ", err)
 	}
-	defer watcher.Close()
 
-	done := make(chan bool)
-	go func() {
-		for {
-			select {
-			case event, ok := <-watcher.Events:
-				if !ok {
-					log.Debug("Watcher event is not OK!")
-					return
-				}
-				if event.Op&fsnotify.Write == fsnotify.Write {
-					log.Debugf("A change occurred - syncing directory %s to %s (event: %s)", *directory, *server, event.String())
-					api.pushFiles()
-				}
-			case err, ok := <-watcher.Errors:
-				if !ok {
-					log.Debug("Watcher error event is not OK!")
-					return
-				}
-				log.Warn("An error occurred while attempting to watch the given directory: ", err)
-			}
+	// Parse classes
+	classes := parser.GetClasses(classesFile[:])
+
+	for _, class := range classes {
+		classFile, err := ioutil.ReadFile(*directory + "/" + class)
+		if err != nil {
+			log.Fatal("Failed to read class: ", class, err)
 		}
-	}()
-
-	err = watcher.Add(*directory)
-	if err != nil {
-		log.Fatal("Failed to add directory to watcher: ", err)
+		data := parser.GetSubstitutes(classFile[:])
+		// TODO: Push resulting JSON to server
+		pushData(data)
 	}
-	<-done
 }
+
+func pushData(data structs.SubstituteResponse) {}
