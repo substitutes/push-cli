@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path/filepath"
+	"sync"
 )
 
 var (
@@ -53,6 +54,8 @@ func main() {
 	// Parse classes
 	classes := parser.GetClasses(classesFile[:])
 
+	wg := sync.WaitGroup{}
+
 	for _, class := range classes {
 		classFile, err := ioutil.ReadFile(*directory + "/" + class)
 		if err != nil {
@@ -60,17 +63,18 @@ func main() {
 		}
 		data := parser.GetSubstitutes(classFile[:])
 		// TODO: Push resulting JSON to server
-		pushData(data)
+		wg.Add(1)
+		go pushData(data, &wg)
 	}
 
+	wg.Wait()
 }
 
-func pushData(data models.SubstituteResponse) {
+func pushData(data models.SubstituteResponse, wg *sync.WaitGroup) {
 	parsedData, err := json.MarshalIndent(data, "", " ")
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Debug("Attempting to push data: ", string(parsedData[:]))
 	apiPath := (*server).String() + "/api/v1/substitute/class"
 	apiReq, err := http.NewRequest("PUT", apiPath, bytes.NewReader(parsedData))
 	if err != nil {
@@ -82,6 +86,7 @@ func pushData(data models.SubstituteResponse) {
 	resp, err := http.DefaultClient.Do(apiReq)
 	if err != nil {
 		log.Warn("Failed to push class ", data.Meta.Class, ": ", err)
+		wg.Done()
 		return
 	}
 	respData, err := ioutil.ReadAll(resp.Body)
@@ -89,13 +94,14 @@ func pushData(data models.SubstituteResponse) {
 		log.Fatal("Failed to read backend response: ", err)
 	}
 	log.Debug("Response from backend: ", string(respData[:]))
-	var respJSON model.APIResponse
-	if json.Unmarshal(respData, &respJSON) != nil {
-		log.Fatal("Failed to unmarshal backend response: ", err)
-	}
 	if resp.StatusCode == 201 {
 		log.Info("Pushed class ", data.Meta.Class, " to backend")
 	} else {
-		log.Warn("Failed to push class: ", resp.Status, respJSON.Message)
+		var respJSON model.APIResponse
+		if err := json.Unmarshal(respData, &respJSON); err != nil {
+			log.Warn("Failed to unmarshal backend response: ", err)
+		}
+		log.Warn("Failed to push class: ", resp.Status, respJSON)
 	}
+	wg.Done()
 }
