@@ -5,7 +5,8 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/djimenez/iconv-go"
 	log "github.com/sirupsen/logrus"
-	"github.com/substitutes/substitutes/structs"
+	"github.com/substitutes/substitutes/models"
+	"github.com/substitutes/substitutes/parser"
 	"io"
 	"regexp"
 	"strings"
@@ -34,17 +35,17 @@ func GetClasses(data []byte) []string {
 }
 
 // GetSubstitutes parses a given class file
-func GetSubstitutes(data []byte) structs.SubstituteResponse {
+func GetSubstitutes(data []byte) models.SubstituteResponse {
 	doc, err := goquery.NewDocumentFromReader(processEncoding(data))
 	if err != nil {
 		log.Fatal("Failed to open file: ", err)
 	}
 	var extended bool
-	var substitutes []structs.Substitute
+	var substitutes []models.Substitute
 	doc.Find("table").Last().Remove()
 	doc.Find("table").Last().Find("tr").Each(func(i int, sel *goquery.Selection) {
 		if i != 0 {
-			var v structs.Substitute
+			var v models.Substitute
 			count := len(sel.Find("td").Nodes)
 			if count >= 10 /* Not working ,_, */ {
 				extended = true
@@ -54,7 +55,11 @@ func GetSubstitutes(data []byte) structs.SubstituteResponse {
 					switch i {
 					// Parse the HTML table into the struct
 					case 0:
-						v.Date = t
+						var err error
+						v.Date, err = parser.ParseUntisTime(t)
+						if err != nil {
+							break
+						}
 						break
 					case 1:
 						v.Hour = t
@@ -145,11 +150,21 @@ func GetSubstitutes(data []byte) structs.SubstituteResponse {
 		}
 	})
 
-	meta := structs.SubstituteMeta{
-		Extended: extended,
-		Date:     strings.Replace(strings.Replace(doc.Find("center font font b").First().Text(), "\n", "", -1), "Vertretungen ", "Substitutes", 1),
-		Class:    strings.Replace(doc.Find("center font font font").First().Text(), "\n", "", -1),
-		Updated:  doc.Find("table").First().Find("tr").Last().Find("td").Last().Text(),
+	parsedDate, err := parser.ParseUntisDate(doc.Find("center font font b").First().Text())
+	if err != nil {
+		log.Fatal("Failed to parse date: ", err)
 	}
-	return structs.SubstituteResponse{Meta: meta, Substitutes: substitutes}
+
+	parsedUpdated, err := parser.ParseUntisTime(doc.Find("table").First().Find("tr").Last().Find("td").Last().Text())
+	if err != nil {
+		log.Fatal("Failed to parse date: ", err)
+	}
+
+	meta := models.SubstituteMeta{
+		Extended: extended,
+		Date:     parsedDate,
+		Class:    strings.Replace(doc.Find("center font font font").First().Text(), "\n", "", -1),
+		Updated:  parsedUpdated,
+	}
+	return models.SubstituteResponse{Meta: meta, Substitutes: substitutes}
 }

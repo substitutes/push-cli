@@ -1,11 +1,16 @@
 package main
 
 import (
+	"bytes"
+	"encoding/json"
 	log "github.com/sirupsen/logrus"
+	"github.com/substitutes/push-cli/client"
 	"github.com/substitutes/push-cli/parser"
-	"github.com/substitutes/substitutes/structs"
+	"github.com/substitutes/push-receiver/model"
+	"github.com/substitutes/substitutes/models"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"io/ioutil"
+	"net/http"
 	"path/filepath"
 )
 
@@ -15,8 +20,7 @@ var (
 	username  = kingpin.Flag("username", "Specify the username for the backend service").Short('u').Required().String()
 	password  = kingpin.Flag("password", "Specify the password for the backend service").Short('p').Required().String()
 	directory = kingpin.Arg("directory", "Specify the directory to listen").Required().ExistingDir()
-	proxy     = kingpin.Flag("proxy", "Enable HTTP proxy").Bool()
-	proxyURL  = kingpin.Flag("proxy-url", "Proxy URL").URL()
+	proxyURL  = kingpin.Flag("proxy", "Proxy URL").URL()
 )
 
 func main() {
@@ -26,9 +30,8 @@ func main() {
 	if *verbose {
 		log.SetLevel(log.DebugLevel)
 	}
-	// api := API{}
 
-	// api.pingAPI()
+	http.DefaultClient = &http.Client{Transport: &http.Transport{Proxy: http.ProxyURL(*proxyURL)}}
 
 	log.Debug("Initialized application")
 
@@ -59,6 +62,40 @@ func main() {
 		// TODO: Push resulting JSON to server
 		pushData(data)
 	}
+
 }
 
-func pushData(data structs.SubstituteResponse) {}
+func pushData(data models.SubstituteResponse) {
+	parsedData, err := json.MarshalIndent(data, "", " ")
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Debug("Attempting to push data: ", string(parsedData[:]))
+	apiPath := (*server).String() + "/api/v1/substitute/class"
+	apiReq, err := http.NewRequest("PUT", apiPath, bytes.NewReader(parsedData))
+	if err != nil {
+		log.Fatal("Failed to create client: ", err)
+	}
+	apiReq.SetBasicAuth(*username, *password)
+	apiReq.Header.Set("User-Agent", client.UserAgent)
+	apiReq.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(apiReq)
+	if err != nil {
+		log.Warn("Failed to push class ", data.Meta.Class, ": ", err)
+		return
+	}
+	respData, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal("Failed to read backend response: ", err)
+	}
+	log.Debug("Response from backend: ", string(respData[:]))
+	var respJSON model.APIResponse
+	if json.Unmarshal(respData, &respJSON) != nil {
+		log.Fatal("Failed to unmarshal backend response: ", err)
+	}
+	if resp.StatusCode == 201 {
+		log.Info("Pushed class ", data.Meta.Class, " to backend")
+	} else {
+		log.Warn("Failed to push class: ", resp.Status, respJSON.Message)
+	}
+}
