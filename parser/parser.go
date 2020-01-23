@@ -5,8 +5,8 @@ import (
 	"github.com/PuerkitoBio/goquery"
 	"github.com/djimenez/iconv-go"
 	log "github.com/sirupsen/logrus"
-	"github.com/substitutes/substitutes/models"
 	"github.com/substitutes/substitutes/parser"
+	"github.com/substitutes/substitutes/structs"
 	"io"
 	"regexp"
 	"strings"
@@ -35,17 +35,17 @@ func GetClasses(data []byte) []string {
 }
 
 // GetSubstitutes parses a given class file
-func GetSubstitutes(data []byte) models.SubstituteResponse {
+func GetSubstitutes(data []byte) structs.SubstituteResponse {
 	doc, err := goquery.NewDocumentFromReader(processEncoding(data))
 	if err != nil {
 		log.Fatal("Failed to open file: ", err)
 	}
 	var extended bool
-	var substitutes []models.Substitute
+	var substitutes []structs.Substitute
 	doc.Find("table").Last().Remove()
 	doc.Find("table").Last().Find("tr").Each(func(i int, sel *goquery.Selection) {
 		if i != 0 {
-			var v models.Substitute
+			var v structs.Substitute
 			count := len(sel.Find("td").Nodes)
 			if count >= 10 /* Not working ,_, */ {
 				extended = true
@@ -160,11 +160,11 @@ func GetSubstitutes(data []byte) models.SubstituteResponse {
 		log.Fatal("Failed to parse date: ", err)
 	}
 
-	meta := models.SubstituteMeta{
+	meta := structs.SubstituteMeta{
 		Extended: extended,
 		Date:     parsedDate,
 		Class:    strings.Replace(doc.Find("center font font font").First().Text(), "\n", "", -1),
 		Updated:  parsedUpdated,
 	}
-	return models.SubstituteResponse{Meta: meta, Substitutes: substitutes}
+	return structs.SubstituteResponse{Meta: meta, Substitutes: substitutes}
 }

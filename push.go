@@ -3,11 +3,12 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/substitutes/push-cli/client"
 	"github.com/substitutes/push-cli/parser"
 	"github.com/substitutes/push-receiver/model"
-	"github.com/substitutes/substitutes/models"
+	"github.com/substitutes/substitutes/structs"
 	"gopkg.in/alecthomas/kingpin.v2"
 	"io/ioutil"
 	"net/http"
@@ -70,11 +71,14 @@ func main() {
 	wg.Wait()
 }
 
-func pushData(data models.SubstituteResponse, wg *sync.WaitGroup) {
+func pushData(data structs.SubstituteResponse, wg *sync.WaitGroup) {
 	parsedData, err := json.MarshalIndent(data, "", " ")
 	if err != nil {
 		log.Fatal(err)
 	}
+	fmt.Print(parsedData)
+	wg.Done()
+	return
 	apiPath := (*server).String() + "/api/v1/substitute/class"
 	apiReq, err := http.NewRequest("PUT", apiPath, bytes.NewReader(parsedData))
 	if err != nil {
