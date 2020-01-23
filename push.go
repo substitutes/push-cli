@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	log "github.com/sirupsen/logrus"
 	"github.com/substitutes/push-cli/client"
 	"github.com/substitutes/push-cli/parser"
@@ -76,9 +75,6 @@ func pushData(data structs.SubstituteResponse, wg *sync.WaitGroup) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Print(parsedData)
-	wg.Done()
-	return
 	apiPath := (*server).String() + "/api/v1/substitute/class"
 	apiReq, err := http.NewRequest("PUT", apiPath, bytes.NewReader(parsedData))
 	if err != nil {
