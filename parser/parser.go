@@ -41,11 +41,29 @@ func GetSubstitutes(data []byte) structs.SubstituteResponse {
 		log.Fatal("Failed to open file: ", err)
 	}
 	var substitutes []structs.Substitute
+
+	parsedDate, err := parser.ParseUntisTime(doc.Find("body > center > font > table:nth-child(1) > tbody > tr:nth-child(2) > td:nth-child(3)").First().Text())
+	if err != nil {
+		log.Fatal("Failed to parse date: ", err)
+	}
+
+	parsedUpdated, err := parser.ParseUntisTime(doc.Find("table").First().Find("tr").Last().Find("td").Last().Text())
+	if err != nil {
+		log.Fatal("Failed to parse date: ", err)
+	}
+
+	meta := structs.SubstituteMeta{
+		Date:    parsedDate,
+		Class:   strings.Replace(doc.Find("center font font font").First().Text(), "\n", "", -1),
+		Updated: parsedUpdated,
+	}
+
 	doc.Find("tbody").Last().Find("tr").Each(func(i int, sel *goquery.Selection) {
 		if i != 0 {
 			var v structs.Substitute
+			v.Date = meta.Date
 			sel.Find("td font").Each(func(i int, sel *goquery.Selection) {
-				t := strings.Replace(sel.Text(), "\n", "", -1)
+				t := strings.Trim(strings.Replace(sel.Text(), "\n", "", -1), " ")
 				switch i {
 				case 0:
 					v.Classes = sel.Find("b").Text()
@@ -74,24 +92,8 @@ func GetSubstitutes(data []byte) structs.SubstituteResponse {
 				}
 			})
 			substitutes = append(substitutes, v)
-
 		}
 	})
 
-	parsedDate, err := parser.ParseUntisTime(doc.Find("body > center > font > table:nth-child(1) > tbody > tr:nth-child(2) > td:nth-child(3)").First().Text())
-	if err != nil {
-		log.Fatal("Failed to parse date: ", err)
-	}
-
-	parsedUpdated, err := parser.ParseUntisTime(doc.Find("table").First().Find("tr").Last().Find("td").Last().Text())
-	if err != nil {
-		log.Fatal("Failed to parse date: ", err)
-	}
-
-	meta := structs.SubstituteMeta{
-		Date:    parsedDate,
-		Class:   strings.Replace(doc.Find("center font font font").First().Text(), "\n", "", -1),
-		Updated: parsedUpdated,
-	}
 	return structs.SubstituteResponse{Meta: meta, Substitutes: substitutes}
 }
