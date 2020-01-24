@@ -84,6 +84,7 @@ func GetSubstitutes(data []byte) structs.SubstituteResponse {
 					v.Room = strings.Replace(t, "?", " => ", 1)
 					break
 				case 5:
+					t = strings.Replace(t, "Raum-Vtr.", "Raum Vertretung", 1)
 					v.Type = t
 					break
 				case 6:
