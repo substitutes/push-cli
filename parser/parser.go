@@ -86,6 +86,9 @@ func GetSubstitutes(data []byte) structs.SubstituteResponse {
 				case 5:
 					t = strings.Replace(t, "Raum-Vtr.", "Raum Vertretung", 1)
 					v.Type = t
+					if strings.Contains(strings.ToLower(v.Type), "entfall") || strings.Contains(strings.ToLower(v.Type), "eva") {
+						v.Cancelled = true
+					}
 					break
 				case 6:
 					v.Notes += t
