@@ -62,8 +62,8 @@ func GetSubstitutes(data []byte) structs.SubstituteResponse {
 		if i != 0 {
 			var v structs.Substitute
 			v.Date = meta.Date
-			sel.Find("td font").Each(func(i int, sel *goquery.Selection) {
-				t := strings.Trim(strings.Replace(sel.Text(), "\n", "", -1), " ")
+			sel.Find("td").Each(func(i int, sel *goquery.Selection) {
+				t := strings.Trim(strings.Replace(sel.Find("font").Text(), "\n", "", -1), " ")
 				switch i {
 				case 0:
 					v.Classes = sel.Find("b").Text()
